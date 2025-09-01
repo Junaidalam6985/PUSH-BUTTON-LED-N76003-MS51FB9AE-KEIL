@@ -1,0 +1,1 @@
+"..\..\Common\IAP.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(..\..\Include;..\..\My_Libraries\2 Wire LCD  (Software Delay);..\..\My_Libraries\Software Delay;..\..\Include) DEFINE (FOSC_160000) DEBUG OBJECTEXTEND PRINT(.\Listings\IAP.lst) TABS (2) OBJECT(.\Objects\IAP.obj)

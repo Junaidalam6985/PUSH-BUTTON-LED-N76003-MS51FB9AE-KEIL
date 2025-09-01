@@ -1,0 +1,6 @@
+".\Objects\main.obj",
+".\Objects\Delay.obj",
+".\Objects\Common.obj" 
+TO ".\Objects\BUTTON" 
+PRINT(".\Listings\BUTTON.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

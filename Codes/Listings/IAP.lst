@@ -1,0 +1,632 @@
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE IAP
+OBJECT MODULE PLACED IN .\Objects\IAP.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\..\Common\IAP.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(..\..\Include;.
+                    -.\..\My_Libraries\2 Wire LCD  (Software Delay);..\..\My_Libraries\Software Delay;..\..\Include) DEFINE(FOSC_160000) DEBU
+                    -G OBJECTEXTEND PRINT(.\Listings\IAP.lst) TABS(2) OBJECT(.\Objects\IAP.obj)
+
+line level    source
+
+   1          /*--------------------------------------------------------------------------------------------------------
+             --*/
+   2          /*                                                                                                        
+             - */
+   3          /* SPDX-License-Identifier: Apache-2.0                                                                    
+             - */
+   4          /* Copyright(c) 2022 Nuvoton Technology Corp. All rights reserved.                                        
+             - */
+   5          /*                                                                                                        
+             - */
+   6          /*--------------------------------------------------------------------------------------------------------
+             --*/
+   7          #include "N76E003.h"
+   8          #include "Common.h"
+   9          #include "Delay.h"
+  10          #include "SFR_Macro.h"
+  11          #include "Function_define.h"
+  12          #include "IAP.h"
+  13          
+  14          unsigned char xdata DIDBuffer[2];
+  15          unsigned char xdata PIDBuffer[2];
+  16          unsigned char xdata UIDBuffer[12];
+  17          unsigned char xdata UCIDBuffer[12];
+  18          unsigned char xdata IAPDataBuf[128];
+  19          unsigned char xdata IAPCFBuf[5];
+  20          bit  ConfigModifyFlag;
+  21          
+  22          /**
+  23           * @brief       Erase LDROM  
+  24           * @param       u16IAPStartAddress define LDROM area start address
+  25           * @param       u16IAPDataSize define LDROM need be erase bytes size
+  26           * @return      none
+  27           * @details     Page erase LDROM area base on data start address 
+  28           * @example      Erase_LDROM(0x0000,2048);
+  29           */
+  30          void Erase_LDROM(unsigned int u16IAPStartAddress,unsigned int u16IAPDataSize)
+  31          {   
+  32   1          unsigned int u16Count;
+  33   1      
+  34   1          set_CHPCON_IAPEN;                    // Enable IAP function
+*** ERROR C202 IN LINE 34 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+  35   1          set_IAPUEN_LDUEN;                    //  LDROM modify Enable
+*** ERROR C202 IN LINE 35 OF ..\..\Common\IAP.c: 'set_IAPUEN_LDUEN': undefined identifier
+  36   1          IAPFD = 0xFF;                        // IMPORTANT !! To erase function must setting IAPFD = 0xFF 
+  37   1          IAPCN = PAGE_ERASE_LDROM;
+*** ERROR C202 IN LINE 37 OF ..\..\Common\IAP.c: 'PAGE_ERASE_LDROM': undefined identifier
+  38   1          for(u16Count=0x0000;u16Count<(u16IAPDataSize/PAGE_SIZE);u16Count++)            // Loop page erase LDRO
+             -M special define address area.
+*** ERROR C202 IN LINE 38 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+  39   1          {        
+  40   2              IAPAL = LOBYTE(u16Count*PAGE_SIZE + u16IAPStartAddress);
+*** ERROR C202 IN LINE 40 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+  41   2              IAPAH = HIBYTE(u16Count*PAGE_SIZE + u16IAPStartAddress);
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 2   
+
+*** ERROR C202 IN LINE 41 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+  42   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 42 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+  43   2          } 
+  44   1          clr_IAPUEN_LDUEN;                    // Disable LDROM modify 
+*** ERROR C202 IN LINE 44 OF ..\..\Common\IAP.c: 'clr_IAPUEN_LDUEN': undefined identifier
+  45   1          clr_CHPCON_IAPEN;                    // Disable IAP
+*** ERROR C202 IN LINE 45 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+  46   1      }
+  47          
+  48          /**
+  49           * @brief       LDROM blank check
+  50           * @param       u16IAPStartAddress define LDROM area start address
+  51           * @param       u16IAPDataSize define LDROM need be erase bytes size
+  52           * @return      none
+  53           * @details     Check each byte of LDROM is FFH or not.
+  54           * @example      LDROM_BlanckCheck(0x0000,2048);
+  55           */
+  56          void Erase_Verify_LDROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+  57          {   
+  58   1          unsigned int u16Count;
+  59   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 59 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+  60   1          IAPAL = LOBYTE(u16IAPStartAddress);
+  61   1          IAPAH = HIBYTE(u16IAPStartAddress);
+  62   1          IAPCN = BYTE_READ_LDROM;
+*** ERROR C202 IN LINE 62 OF ..\..\Common\IAP.c: 'BYTE_READ_LDROM': undefined identifier
+  63   1      
+  64   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+  65   1          {   
+  66   2              IAPFD = 0x00;    
+  67   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 67 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+  68   2              if(IAPFD != 0xFF)
+  69   2                while(1);
+  70   2              IAPAL++;
+  71   2              if(IAPAL == 0x00)
+  72   2                IAPAH++;
+  73   2          } 
+  74   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 74 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+  75   1      }
+  76          
+  77          /**
+  78           * @brief       LDROM program loop
+  79           * @param       u16IAPStartAddress define LDROM area start address
+  80           * @param       u16IAPDataSize define LDROM need be erase bytes size
+  81           * @return      none
+  82           * @details     Copy IAPDataBuf to LDROM
+  83           * @example      LDROM_Program(0x0000,1024);
+  84           */
+  85          void Program_LDROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+  86          {   
+  87   1          unsigned int u16Count;
+  88   1      
+  89   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 89 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+  90   1          set_IAPUEN_LDUEN;    
+*** ERROR C202 IN LINE 90 OF ..\..\Common\IAP.c: 'set_IAPUEN_LDUEN': undefined identifier
+  91   1          IAPAL = LOBYTE(u16IAPStartAddress);
+  92   1          IAPAH = HIBYTE(u16IAPStartAddress);
+  93   1          IAPCN = BYTE_PROGRAM_LDROM;
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 3   
+
+*** ERROR C202 IN LINE 93 OF ..\..\Common\IAP.c: 'BYTE_PROGRAM_LDROM': undefined identifier
+  94   1          
+  95   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+  96   1          {   
+  97   2              IAPFD = IAPDataBuf[u16Count];     
+  98   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 98 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+  99   2              IAPAL++;
+ 100   2              if(IAPAL == 0)
+ 101   2              {
+ 102   3                  IAPAH++;
+ 103   3              }
+ 104   2          } 
+ 105   1          clr_IAPUEN_LDUEN;
+*** ERROR C202 IN LINE 105 OF ..\..\Common\IAP.c: 'clr_IAPUEN_LDUEN': undefined identifier
+ 106   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 106 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 107   1      }
+ 108          
+ 109          
+ 110          /**
+ 111           * @brief       LDROM check loop
+ 112           * @param       u16IAPStartAddress define LDROM area start address
+ 113           * @param       u16IAPDataSize define LDROM need be erase bytes size
+ 114           * @return      none
+ 115           * @details     Check with XRAM IAPDataBuf with LDROM
+ 116           * @example      LDROM_Program_Verify(0x0000,1024);
+ 117           */
+ 118          void Program_Verify_LDROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+ 119          {   
+ 120   1          unsigned int u16Count;
+ 121   1      
+ 122   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 122 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 123   1          IAPAL = LOBYTE(u16IAPStartAddress);
+ 124   1          IAPAH = HIBYTE(u16IAPStartAddress);
+ 125   1          IAPCN = BYTE_READ_LDROM;
+*** ERROR C202 IN LINE 125 OF ..\..\Common\IAP.c: 'BYTE_READ_LDROM': undefined identifier
+ 126   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+ 127   1          {   
+ 128   2              IAPFD = 0x00;
+ 129   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 129 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 130   2              if (IAPFD != IAPDataBuf[u16Count])    
+ 131   2                  while(1);
+ 132   2              IAPAL++;
+ 133   2              if(IAPAL == 0)
+ 134   2              {
+ 135   3                  IAPAH++;
+ 136   3              }
+ 137   2          } 
+ 138   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 138 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 139   1      }
+ 140          
+ 141          /**
+ 142           * @brief       Erase APROM  
+ 143           * @param       u16IAPStartAddress define APROM area start address
+ 144           * @param       u16IAPDataSize define LDROM need be erase bytes size
+ 145           * @return      none
+ 146           * @details     Page erase APROM area base on data start address 
+ 147           * @example      Erase_APROM(0x0000,2048);
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 4   
+
+ 148           */
+ 149          void Erase_APROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+ 150          {   
+ 151   1          unsigned int u16Count;
+ 152   1      
+ 153   1          set_CHPCON_IAPEN;                    // Enable IAP function
+*** ERROR C202 IN LINE 153 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 154   1          set_IAPUEN_APUEN;                    // APROM modify Enable
+*** ERROR C202 IN LINE 154 OF ..\..\Common\IAP.c: 'set_IAPUEN_APUEN': undefined identifier
+ 155   1          IAPFD = 0xFF;                        // IMPORTANT !! To erase function must setting IAPFD = 0xFF 
+ 156   1          IAPCN = PAGE_ERASE_APROM;
+*** ERROR C202 IN LINE 156 OF ..\..\Common\IAP.c: 'PAGE_ERASE_APROM': undefined identifier
+ 157   1          for(u16Count=0x0000;u16Count<u16IAPDataSize/PAGE_SIZE;u16Count++)            // Loop page erase APROM 
+             -special define address area.
+*** ERROR C202 IN LINE 157 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+ 158   1          {        
+ 159   2              IAPAL = LOBYTE(u16Count*PAGE_SIZE + u16IAPStartAddress);
+*** ERROR C202 IN LINE 159 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+ 160   2              IAPAH = HIBYTE(u16Count*PAGE_SIZE + u16IAPStartAddress);
+*** ERROR C202 IN LINE 160 OF ..\..\Common\IAP.c: 'PAGE_SIZE': undefined identifier
+ 161   2              set_IAPTRG_IAPGO_WDCLR; 
+*** ERROR C202 IN LINE 161 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 162   2          } 
+ 163   1          clr_IAPUEN_APUEN;                    // Disable APROM modify 
+*** ERROR C202 IN LINE 163 OF ..\..\Common\IAP.c: 'clr_IAPUEN_APUEN': undefined identifier
+ 164   1          clr_CHPCON_IAPEN;                    // Disable IAP
+*** ERROR C202 IN LINE 164 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 165   1      }
+ 166          
+ 167          /**
+ 168           * @brief       APROM blank check
+ 169           * @param       u16IAPStartAddress define APROM area start address
+ 170           * @param       u16IAPDataSize define APROM need be erase bytes size
+ 171           * @return      none
+ 172           * @details     Check each byte of APPROM is FFH or not.
+ 173           * @example      APROM_Blank_Check(0x0000,2048);
+ 174           */
+ 175          void Erase_Verify_APROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+ 176          {   
+ 177   1          unsigned int u16Count;
+ 178   1        
+ 179   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 179 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 180   1          IAPAL = LOBYTE(u16IAPStartAddress);
+ 181   1          IAPAH = HIBYTE(u16IAPStartAddress);
+ 182   1          IAPCN = BYTE_READ_APROM;
+*** ERROR C202 IN LINE 182 OF ..\..\Common\IAP.c: 'BYTE_READ_APROM': undefined identifier
+ 183   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+ 184   1          {   
+ 185   2              IAPFD = 0x00;    
+ 186   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 186 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 187   2              if(IAPFD != 0xFF)
+ 188   2                while(1);
+ 189   2              IAPAL++;
+ 190   2              if(IAPAL == 0x00)
+ 191   2                IAPAH++;
+ 192   2          } 
+ 193   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 193 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 194   1      }
+ 195          
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 5   
+
+ 196          /**
+ 197           * @brief       APROM program loop
+ 198           * @param       u16IAPStartAddress define APROM area start address
+ 199           * @param       u16IAPDataSize define APROM need be erase bytes size
+ 200           * @return      none
+ 201           * @details     Copy APDataBuf to APROM
+ 202           * @example      APROM_Program(0x0000,1024);
+ 203           */
+ 204          void Program_APROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+ 205          {   
+ 206   1          unsigned int u16Count;
+ 207   1      
+ 208   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 208 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 209   1          set_IAPUEN_APUEN;    
+*** ERROR C202 IN LINE 209 OF ..\..\Common\IAP.c: 'set_IAPUEN_APUEN': undefined identifier
+ 210   1          IAPAL = LOBYTE(u16IAPStartAddress);
+ 211   1          IAPAH = HIBYTE(u16IAPStartAddress);
+ 212   1          IAPCN = BYTE_PROGRAM_APROM;
+*** ERROR C202 IN LINE 212 OF ..\..\Common\IAP.c: 'BYTE_PROGRAM_APROM': undefined identifier
+ 213   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+ 214   1          {   
+ 215   2              IAPFD=IAPDataBuf[u16Count];
+ 216   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 216 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 217   2              IAPAL++;
+ 218   2              if(IAPAL == 0)
+ 219   2              {
+ 220   3                  IAPAH++;
+ 221   3              }
+ 222   2          } 
+ 223   1          clr_IAPUEN_APUEN;
+*** ERROR C202 IN LINE 223 OF ..\..\Common\IAP.c: 'clr_IAPUEN_APUEN': undefined identifier
+ 224   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 224 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 225   1      }
+ 226          
+ 227          
+ 228          /**
+ 229           * @brief       APROM check loop
+ 230           * @param       u16IAPStartAddress define APROM area start address
+ 231           * @param       u16IAPDataSize define APROM need be erase bytes size
+ 232           * @return      none
+ 233           * @details     Check with XRAM IAPDataBuf with APROM
+ 234           * @example      APROM_Program_Verify(0x0000,1024);
+ 235           */
+ 236          void Program_Verify_APROM(unsigned int u16IAPStartAddress, unsigned int u16IAPDataSize)
+ 237          {   
+ 238   1          unsigned int u16Count;
+ 239   1      
+ 240   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 240 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 241   1          IAPAL = LOBYTE(u16IAPStartAddress);
+ 242   1          IAPAH = HIBYTE(u16IAPStartAddress);
+ 243   1          IAPCN = BYTE_READ_APROM;
+*** ERROR C202 IN LINE 243 OF ..\..\Common\IAP.c: 'BYTE_READ_APROM': undefined identifier
+ 244   1          for(u16Count=0;u16Count<u16IAPDataSize;u16Count++)
+ 245   1          {   
+ 246   2              IAPFD = 0x00;
+ 247   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 247 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 248   2              if (IAPFD != IAPDataBuf[u16Count])
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 6   
+
+ 249   2                  while(1);
+ 250   2              IAPAL++;
+ 251   2              if(IAPAL == 0)
+ 252   2              {
+ 253   3                  IAPAH++;
+ 254   3              }
+ 255   2          } 
+ 256   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 256 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 257   1      }
+ 258          
+ 259          
+ 260          /**
+ 261           * @brief       Modify CONFIG  
+ 262           * @param       u8CF0,u8CF1,u8CF2,u8CF3,u8CF4,
+ 263           * @return      none
+ 264           * @details     1. Check the CONFIG setting and now CONFIG value, if this value is matched do not change, 
+             -close Modify.
+ 265                          2. if value not match save old config define in XRAM, erase config and program as param de
+             -fine, if fail load saved config and program to recover.    
+ 266                          3. All interrupt is disabled in modify CONFIG process.
+ 267           * @example     Modify_CONFIG(0xEF,0xFB,0xEF,0xFF,0xFF);
+ 268           */
+ 269          void Modify_CONFIG(unsigned char u8CF0,unsigned char u8CF1,unsigned char u8CF2,unsigned char u8CF3,unsigne
+             -d char u8CF4)
+ 270          {   
+ 271   1          unsigned char u8Count;
+ 272   1      
+ 273   1          if(PCON&SET_BIT4)        /* Check with power on flag. Only the first power on check with CONFIG */
+ 274   1          {
+ 275   2              BIT_TMP = EA;
+ 276   2              EA = 0;
+ 277   2              
+ 278   2              set_CHPCON_IAPEN;                    // Enable IAP function
+*** ERROR C202 IN LINE 278 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 279   2              IAPCN = BYTE_READ_CONFIG;
+ 280   2              IAPAH = 0x00;
+ 281   2              /* Check CONFIG setting data */
+ 282   2              IAPAL = 0;
+ 283   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 283 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 284   2              if (IAPFD != u8CF0)
+ 285   2                goto COPRST;
+ 286   2              IAPAL++;
+ 287   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 287 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 288   2              if (IAPFD != u8CF1)
+ 289   2                goto COPRST;
+ 290   2              IAPAL++;
+ 291   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 291 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 292   2              if (IAPFD != u8CF2)
+ 293   2                goto COPRST;
+ 294   2              IAPAL++;
+ 295   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 295 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 296   2              if (IAPFD != u8CF3)
+ 297   2                goto COPRST;
+ 298   2              IAPAL++;
+ 299   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 299 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 300   2              if (IAPFD != u8CF4)
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 7   
+
+ 301   2                goto COPRST;
+ 302   2              goto CFCLOSE;
+ 303   2              /* Loop save original CONFIG data in XRAM  */
+ 304   2      
+ 305   2      COPRST:
+ 306   2              ConfigModifyFlag = 1;                // CONFIG modify flag set.
+ 307   2              for(u8Count=0;u8Count<5;u8Count++)
+ 308   2              {        
+ 309   3                  IAPAL = u8Count;
+ 310   3                  set_IAPTRG_IAPGO; 
+*** ERROR C202 IN LINE 310 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 311   3                  IAPCFBuf[u8Count] = IAPFD;
+ 312   3              } 
+ 313   2              /* Erase CONFIG setting    */
+ 314   2              set_IAPUEN_CFUEN;                    // CONFIG modify Enable
+*** ERROR C202 IN LINE 314 OF ..\..\Common\IAP.c: 'set_IAPUEN_CFUEN': undefined identifier
+ 315   2              IAPFD = 0xFF;                        // IMPORTANT !! To erase function must setting IAPFD = 0xFF 
+ 316   2              IAPCN = PAGE_ERASE_CONFIG;
+ 317   2              IAPAL = 0x00;
+ 318   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 318 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 319   2              /* Modify CONFIG setting as customer define */
+ 320   2              IAPCN = BYTE_PROGRAM_CONFIG;
+ 321   2              IAPFD = u8CF0;
+ 322   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 322 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 323   2              IAPAL++;
+ 324   2              IAPFD = u8CF1;
+ 325   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 325 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 326   2              IAPAL++;
+ 327   2              IAPFD = u8CF2;
+ 328   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 328 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 329   2              IAPAL++;
+ 330   2              IAPFD = u8CF3;
+ 331   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 331 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 332   2              IAPAL++;
+ 333   2              IAPFD = u8CF4;
+ 334   2              set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 334 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 335   2              clr_IAPUEN_CFUEN;
+*** ERROR C202 IN LINE 335 OF ..\..\Common\IAP.c: 'clr_IAPUEN_CFUEN': undefined identifier
+ 336   2              /* Check programed data, if not match, program the storaged before data.  */
+ 337   2              IAPCN = BYTE_READ_CONFIG;
+ 338   2              IAPAL = 0x00;
+ 339   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 339 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 340   2              if (IAPFD != u8CF0)
+ 341   2                goto MDCFEND;
+ 342   2              IAPAL++;
+ 343   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 343 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 344   2              if (IAPFD != u8CF1)
+ 345   2                goto MDCFEND;
+ 346   2              IAPAL++;
+ 347   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 347 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 348   2              if (IAPFD != u8CF2)
+ 349   2                goto MDCFEND;
+ 350   2              IAPAL++;
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 8   
+
+ 351   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 351 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 352   2              if (IAPFD != u8CF3)
+ 353   2                goto MDCFEND;
+ 354   2              IAPAL++;
+ 355   2              set_IAPTRG_IAPGO; 
+*** ERROR C202 IN LINE 355 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 356   2              if (IAPFD != u8CF4)
+ 357   2                goto MDCFEND;
+ 358   2              goto CFCLOSE;
+ 359   2      MDCFEND:
+ 360   2              for(u8Count=0;u8Count<5;u8Count++)    // Loop save CONFIG data in XRAM
+ 361   2              {        
+ 362   3                  IAPAL = u8Count;
+ 363   3                  IAPFD = IAPCFBuf[u8Count];
+ 364   3                  set_IAPTRG_IAPGO_WDCLR;
+*** ERROR C202 IN LINE 364 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 365   3              }
+ 366   2      CFCLOSE:
+ 367   2              clr_IAPUEN_CFUEN;                    // Disable APROM modify 
+*** ERROR C202 IN LINE 367 OF ..\..\Common\IAP.c: 'clr_IAPUEN_CFUEN': undefined identifier
+ 368   2              clr_CHPCON_IAPEN;                    // Disable IAP
+*** ERROR C202 IN LINE 368 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 369   2              
+ 370   2              EA = BIT_TMP;
+ 371   2              PCON&=CLR_BIT4;                      // Clear power on flag to avoid software reset modify CONFIG 
+             -again. */
+ 372   2      
+ 373   2          }
+ 374   1      }
+ 375          
+ 376          /**
+ 377           * @brief       Read CONFIG  
+ 378           * @param       None,
+ 379           * @return      none
+ 380           * @details     1. Check the CONFIG setting and now CONFIG value, if this value is matched do not change, 
+             -close Modify.
+ 381                          2. if value not match save old config define in XRAM, erase config and program as param de
+             -fine, if fail load saved config and program to recover.    
+ 382                          3. All interrupt is disabled in modify CONFIG process.
+ 383           * @example     Read_CONFIG();
+ 384           */
+ 385          void Read_CONFIG(void)
+ 386          {   
+ 387   1          unsigned char u8Count;
+ 388   1      
+ 389   1              set_CHPCON_IAPEN;                    // Enable IAP function
+*** ERROR C202 IN LINE 389 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 390   1              IAPCN = BYTE_READ_CONFIG;
+ 391   1              IAPAH = 0x00;
+ 392   1              /* Loop save original CONFIG data in XRAM  */
+ 393   1              for(u8Count=0;u8Count<5;u8Count++)
+ 394   1              {        
+ 395   2                  IAPAL = u8Count;
+ 396   2                  set_IAPTRG_IAPGO_WDCLR; 
+*** ERROR C202 IN LINE 396 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO_WDCLR': undefined identifier
+ 397   2                  IAPCFBuf[u8Count] = IAPFD;
+ 398   2              } 
+ 399   1              clr_CHPCON_IAPEN;                    // Disable IAP
+*** ERROR C202 IN LINE 399 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 400   1      }
+ 401          
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 9   
+
+ 402          /**
+ 403           * @brief       Read UID loop
+ 404           * @param       none
+ 405           * @return      none
+ 406           * @details     IAP command read UID area storage data in XRAM LIB_UIDBuffer[0:8]
+ 407           * @example      UID_Read();
+ 408          */
+ 409          void Read_UID(void)
+ 410          {   
+ 411   1          unsigned char u8Count;
+ 412   1      
+ 413   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 413 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 414   1          IAPAL = 0x00;
+ 415   1          IAPAH = 0x00;
+ 416   1          IAPCN = READ_UID;
+ 417   1          for(u8Count=0;u8Count<12;u8Count++)
+ 418   1          {   
+ 419   2              IAPFD = 0x00;
+ 420   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 420 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 421   2              UIDBuffer[u8Count] = IAPFD ;
+ 422   2              IAPAL++;
+ 423   2          } 
+ 424   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 424 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 425   1      }
+ 426          
+ 427          
+ 428          /**
+ 429           * @brief       Read UCID loop
+ 430           * @param       none
+ 431           * @return      none
+ 432           * @details     IAP command read UCID area storage data in XRAM UCIDBuffer[0:8]
+ 433           * @example      UCID_Read();
+ 434           */
+ 435          void Read_UCID(void)
+ 436          {   
+ 437   1          unsigned char u8Count;
+ 438   1      
+ 439   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 439 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 440   1          IAPAL = 0x20;
+ 441   1          IAPAH = 0x00;
+ 442   1          IAPCN = READ_UID;
+ 443   1          for(u8Count=0;u8Count<12;u8Count++)
+ 444   1          {   
+ 445   2              IAPFD = 0x00;
+ 446   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 446 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 447   2              UCIDBuffer[u8Count] = IAPFD ;
+ 448   2              IAPAL++;
+ 449   2          } 
+ 450   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 450 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 451   1      }
+ 452          
+ 453          /**
+ 454           * @brief       Read DID loop
+ 455           * @param       none
+ 456           * @return      none
+ 457           * @details     IAP command read DID area storage data in XRAM LIB_UIDBuffer[0:1]
+C51 COMPILER V9.60.7.0   IAP                                                               06/27/2025 15:22:41 PAGE 10  
+
+ 458           * @example     DID_Read();
+ 459          */
+ 460          void Read_DID(void)
+ 461          {   
+ 462   1          unsigned char u8Count;
+ 463   1      
+ 464   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 464 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 465   1          IAPAL = 0x00;
+ 466   1          IAPAH = 0x00;
+ 467   1          IAPCN = READ_DID;
+*** ERROR C202 IN LINE 467 OF ..\..\Common\IAP.c: 'READ_DID': undefined identifier
+ 468   1          for(u8Count=0;u8Count<2;u8Count++)
+ 469   1          {   
+ 470   2              IAPFD = 0x00;
+ 471   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 471 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 472   2              DIDBuffer[u8Count] = IAPFD ;
+ 473   2              IAPAL++;
+ 474   2          } 
+ 475   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 475 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 476   1      }
+ 477          
+ 478          /**
+ 479           * @brief       Read PID loop
+ 480           * @param       none
+ 481           * @return      none
+ 482          * @details      IAP command read PID area storage data in XRAM LIB_PIDBuffer[0:1]
+ 483           * @example     PID_Read();
+ 484          */
+ 485          void Read_PID(void)
+ 486          {   
+ 487   1          unsigned char u8Count;
+ 488   1      
+ 489   1          set_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 489 OF ..\..\Common\IAP.c: 'set_CHPCON_IAPEN': undefined identifier
+ 490   1          IAPAL = 0x02;
+ 491   1          IAPAH = 0x00;
+ 492   1          IAPCN = READ_DID;
+*** ERROR C202 IN LINE 492 OF ..\..\Common\IAP.c: 'READ_DID': undefined identifier
+ 493   1          for(u8Count=0;u8Count<2;u8Count++)
+ 494   1          {   
+ 495   2              IAPFD = 0x00;
+ 496   2              set_IAPTRG_IAPGO;
+*** ERROR C202 IN LINE 496 OF ..\..\Common\IAP.c: 'set_IAPTRG_IAPGO': undefined identifier
+ 497   2              PIDBuffer[u8Count] = IAPFD ;
+ 498   2              IAPAL++;
+ 499   2          } 
+ 500   1          clr_CHPCON_IAPEN;
+*** ERROR C202 IN LINE 500 OF ..\..\Common\IAP.c: 'clr_CHPCON_IAPEN': undefined identifier
+ 501   1      }
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  86 ERROR(S)
